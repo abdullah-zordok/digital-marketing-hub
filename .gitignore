@@ -28,7 +28,3 @@ Thumbs.db
 *.tmp
 *.swp
 
-# Runtime storage
-uploads/
-uploads-test/
-~/
