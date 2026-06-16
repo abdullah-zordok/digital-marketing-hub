@@ -1,0 +1,784 @@
+openapi: 3.1.0
+info:
+  title: Digital Marketing Hub - AI Chatbot, Knowledge Base, and Lead Capture
+  version: 0.1.0
+  description: Public chatbot, lead capture, admin knowledge base, admin lead management, notification, and abuse-limit APIs.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development server
+tags:
+  - name: Public Chatbot
+  - name: Admin Knowledge Base
+  - name: Public Leads
+  - name: Admin Leads
+paths:
+  /chatbot/sessions:
+    post:
+      tags: [Public Chatbot]
+      summary: Start a chatbot session
+      operationId: createChatSession
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChatSessionRequest"
+      responses:
+        "201":
+          description: Chat session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSessionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  /chatbot/sessions/{sessionId}/messages:
+    post:
+      tags: [Public Chatbot]
+      summary: Send a visitor message and receive an assistant reply
+      operationId: sendChatMessage
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendChatMessageRequest"
+      responses:
+        "201":
+          description: Visitor and assistant messages saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageExchangeResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+    get:
+      tags: [Public Chatbot]
+      summary: List session messages
+      operationId: listChatMessages
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/VisitorId"
+      responses:
+        "200":
+          description: Chat messages in chronological order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageListResponse"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /admin/knowledge-base:
+    post:
+      tags: [Admin Knowledge Base]
+      summary: Create a knowledge base item
+      operationId: createKnowledgeBaseItem
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeBaseWriteRequest"
+      responses:
+        "201":
+          description: Knowledge item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBaseItemResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+    get:
+      tags: [Admin Knowledge Base]
+      summary: List knowledge base items
+      operationId: listKnowledgeBaseItems
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Search"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/KnowledgeBaseStatus"
+        - name: sourceType
+          in: query
+          schema:
+            $ref: "#/components/schemas/KnowledgeSourceType"
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Knowledge item list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBaseItemListResponse"
+  /admin/knowledge-base/{id}:
+    get:
+      tags: [Admin Knowledge Base]
+      summary: Read a knowledge item
+      operationId: getKnowledgeBaseItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Knowledge item detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBaseItemResponse"
+    patch:
+      tags: [Admin Knowledge Base]
+      summary: Update a knowledge item
+      operationId: updateKnowledgeBaseItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeBaseWriteRequest"
+      responses:
+        "200":
+          description: Knowledge item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBaseItemResponse"
+    delete:
+      tags: [Admin Knowledge Base]
+      summary: Delete a knowledge item from normal workflows
+      operationId: deleteKnowledgeBaseItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /admin/knowledge-base/{id}/activate:
+    patch:
+      tags: [Admin Knowledge Base]
+      summary: Activate a knowledge item
+      operationId: activateKnowledgeBaseItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Knowledge item activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBaseItemResponse"
+  /admin/knowledge-base/{id}/archive:
+    patch:
+      tags: [Admin Knowledge Base]
+      summary: Archive a knowledge item
+      operationId: archiveKnowledgeBaseItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Knowledge item archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBaseItemResponse"
+  /leads:
+    post:
+      tags: [Public Leads]
+      summary: Create a public contact-form lead
+      operationId: createPublicLead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicLeadCreateRequest"
+      responses:
+        "201":
+          description: Lead created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicLeadResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  /admin/leads:
+    get:
+      tags: [Admin Leads]
+      summary: List leads for admin follow-up
+      operationId: listAdminLeads
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/LeadStatus"
+        - name: source
+          in: query
+          schema:
+            $ref: "#/components/schemas/LeadSource"
+      responses:
+        "200":
+          description: Admin lead list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadListResponse"
+  /admin/leads/{id}:
+    get:
+      tags: [Admin Leads]
+      summary: Read lead detail
+      operationId: getAdminLead
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Lead detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadDetailResponse"
+    patch:
+      tags: [Admin Leads]
+      summary: Update lead details
+      operationId: updateAdminLead
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLeadUpdateRequest"
+      responses:
+        "200":
+          description: Lead updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadDetailResponse"
+    delete:
+      tags: [Admin Leads]
+      summary: Delete lead from normal workflows
+      operationId: deleteAdminLead
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /admin/leads/{id}/status:
+    patch:
+      tags: [Admin Leads]
+      summary: Update lead status
+      operationId: updateLeadStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: "#/components/schemas/LeadStatus"
+      responses:
+        "200":
+          description: Lead status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadDetailResponse"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    VisitorId:
+      name: visitorId
+      in: query
+      schema:
+        type: string
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    Search:
+      name: search
+      in: query
+      schema:
+        type: string
+  responses:
+    Success:
+      description: Operation completed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SuccessResponse"
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnauthorizedError:
+      description: Authentication is required or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ForbiddenError:
+      description: User is not allowed to perform this action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ConflictError:
+      description: Duplicate public address or conflicting state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: Resource was not found or is not accessible
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimitError:
+      description: Chatbot usage limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    SuccessResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          const: true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+    ErrorResponse:
+      type: object
+      required: [success, message, errors]
+      properties:
+        success:
+          type: boolean
+          const: false
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    KnowledgeBaseStatus:
+      type: string
+      enum: [DRAFT, ACTIVE, ARCHIVED]
+    KnowledgeSourceType:
+      type: string
+      enum: [SERVICE, FAQ, POLICY, GENERAL, BLOG]
+    ChatSessionStatus:
+      type: string
+      enum: [OPEN, CLOSED]
+    ChatMessageRole:
+      type: string
+      enum: [USER, ASSISTANT, SYSTEM, TOOL]
+    LeadSource:
+      type: string
+      enum: [CHATBOT, CONTACT_FORM, SERVICE_PAGE, BLOG_PAGE, MANUAL]
+    LeadStatus:
+      type: string
+      enum: [NEW, CONTACTED, QUALIFIED, PROPOSAL_SENT, WON, LOST]
+    CreateChatSessionRequest:
+      type: object
+      properties:
+        visitorId:
+          type: string
+        sourcePage:
+          type: string
+    SendChatMessageRequest:
+      type: object
+      required: [visitorId, content]
+      properties:
+        visitorId:
+          type: string
+        content:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    KnowledgeBaseWriteRequest:
+      type: object
+      required: [title, slug, content, sourceType]
+      properties:
+        title:
+          type: string
+        slug:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        sourceType:
+          $ref: "#/components/schemas/KnowledgeSourceType"
+    PublicLeadCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        companyName:
+          type: string
+        serviceInterest:
+          type: string
+        budgetRange:
+          type: string
+        message:
+          type: string
+        source:
+          $ref: "#/components/schemas/LeadSource"
+    AdminLeadUpdateRequest:
+      allOf:
+        - $ref: "#/components/schemas/PublicLeadCreateRequest"
+        - type: object
+          properties:
+            assignedTo:
+              type: string
+              format: uuid
+              nullable: true
+    ChatSession:
+      type: object
+      required: [id, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        visitorId:
+          type: string
+          nullable: true
+        leadId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ChatSessionStatus"
+        sourcePage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ChatMessage:
+      type: object
+      required: [id, sessionId, role, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/ChatMessageRole"
+        content:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+    KnowledgeBaseItem:
+      type: object
+      required: [id, title, slug, content, tags, sourceType, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        sourceType:
+          $ref: "#/components/schemas/KnowledgeSourceType"
+        status:
+          $ref: "#/components/schemas/KnowledgeBaseStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Lead:
+      type: object
+      required: [id, source, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        companyName:
+          type: string
+          nullable: true
+        serviceInterest:
+          type: string
+          nullable: true
+        budgetRange:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        source:
+          $ref: "#/components/schemas/LeadSource"
+        status:
+          $ref: "#/components/schemas/LeadStatus"
+        assignedTo:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadNotification"
+    LeadNotification:
+      type: object
+      required: [id, leadId, target, status, payload, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        leadId:
+          type: string
+          format: uuid
+        target:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, SENT, FAILED, SKIPPED]
+        payload:
+          type: object
+          additionalProperties: true
+        errorMessage:
+          type: string
+          nullable: true
+        attemptedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ChatSessionResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ChatSession"
+    ChatMessageExchangeResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [userMessage, assistantMessage]
+              properties:
+                userMessage:
+                  $ref: "#/components/schemas/ChatMessage"
+                assistantMessage:
+                  $ref: "#/components/schemas/ChatMessage"
+                lead:
+                  $ref: "#/components/schemas/Lead"
+    ChatMessageListResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ChatMessage"
+    KnowledgeBaseItemResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/KnowledgeBaseItem"
+    KnowledgeBaseItemListResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items, meta]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/KnowledgeBaseItem"
+                meta:
+                  type: object
+                  additionalProperties: true
+    PublicLeadResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [id, source, status]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                source:
+                  $ref: "#/components/schemas/LeadSource"
+                status:
+                  $ref: "#/components/schemas/LeadStatus"
+    LeadListResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items, meta]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Lead"
+                meta:
+                  type: object
+                  additionalProperties: true
+    LeadDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Lead"
