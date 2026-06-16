@@ -1,0 +1,308 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum KnowledgeBaseStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum KnowledgeSourceType {
+  SERVICE
+  FAQ
+  POLICY
+  GENERAL
+  BLOG
+}
+
+enum LeadSource {
+  CHATBOT
+  CONTACT_FORM
+  SERVICE_PAGE
+  BLOG_PAGE
+  MANUAL
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  WON
+  LOST
+}
+
+enum ChatSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum ChatMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+enum LeadNotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  email         String     @unique
+  name          String?
+  passwordHash  String
+  role          UserRole
+  status        UserStatus @default(ACTIVE)
+  tokenVersion  Int        @default(0)
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+  blogPosts     BlogPost[]
+  assignedLeads Lead[]     @relation("AssignedLeads")
+
+  @@index([role])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Service {
+  id               String        @id @default(uuid()) @db.Uuid
+  name             String
+  title            String
+  slug             String        @unique
+  shortDescription String?
+  fullDescription  String?
+  icon             String?
+  coverImage       String?
+  benefits         Json?
+  processSteps     Json?
+  targetAudience   Json?
+  expectedResults  Json?
+  faqs             Json?
+  status           ContentStatus @default(DRAFT)
+  sortOrder        Int           @default(0)
+  seoTitle         String?
+  seoDescription   String?
+  canonicalUrl     String?
+  openGraphImage   String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  @@index([slug])
+  @@index([status])
+  @@index([sortOrder])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model BlogCategory {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  posts       BlogPost[]
+
+  @@index([slug])
+  @@index([deletedAt])
+}
+
+model BlogPost {
+  id             String        @id @default(uuid()) @db.Uuid
+  title          String
+  slug           String        @unique
+  excerpt        String?
+  content        String?
+  coverImage     String?
+  authorId       String?       @db.Uuid
+  categoryId     String?       @db.Uuid
+  tags           String[]
+  status         ContentStatus @default(DRAFT)
+  publishedAt    DateTime?
+  seoTitle       String?
+  seoDescription String?
+  canonicalUrl   String?
+  openGraphImage String?
+  readingTime    Int?
+  popularityScore Int          @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  author         User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  category       BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([popularityScore])
+  @@index([createdAt])
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([deletedAt])
+}
+
+model Lead {
+  id              String     @id @default(uuid()) @db.Uuid
+  name            String?
+  email           String?
+  phone           String?
+  companyName     String?
+  serviceInterest String?
+  budgetRange     String?
+  message         String?
+  source          LeadSource
+  status          LeadStatus @default(NEW)
+  assignedTo      String?    @db.Uuid
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+  assignee        User?      @relation("AssignedLeads", fields: [assignedTo], references: [id], onDelete: SetNull)
+  chatSessions    ChatSession[]
+  notifications   LeadNotification[]
+
+  @@index([source])
+  @@index([status])
+  @@index([createdAt])
+  @@index([assignedTo])
+  @@index([deletedAt])
+}
+
+model LeadNotification {
+  id           String                 @id @default(uuid()) @db.Uuid
+  leadId       String                 @db.Uuid
+  target       String
+  status       LeadNotificationStatus @default(PENDING)
+  payload      Json
+  errorMessage String?
+  attemptedAt  DateTime?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  lead         Lead                   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([status])
+  @@index([attemptedAt])
+  @@index([createdAt])
+}
+
+model ChatSession {
+  id         String            @id @default(uuid()) @db.Uuid
+  visitorId  String?
+  leadId     String?           @db.Uuid
+  status     ChatSessionStatus @default(OPEN)
+  sourcePage String?
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  deletedAt  DateTime?
+  lead       Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  messages   ChatMessage[]
+
+  @@index([visitorId])
+  @@index([leadId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model ChatMessage {
+  id        String          @id @default(uuid()) @db.Uuid
+  sessionId String          @db.Uuid
+  role      ChatMessageRole
+  content   String
+  metadata  Json?
+  createdAt DateTime        @default(now())
+  session   ChatSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([role])
+  @@index([createdAt])
+}
+
+model KnowledgeBaseItem {
+  id         String              @id @default(uuid()) @db.Uuid
+  title      String
+  slug       String              @unique
+  content    String
+  category   String?
+  tags       String[]
+  sourceType KnowledgeSourceType
+  status     KnowledgeBaseStatus @default(DRAFT)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  deletedAt  DateTime?
+
+  @@index([slug])
+  @@index([category])
+  @@index([sourceType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model SiteSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     Json
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([key])
+  @@index([isPublic])
+  @@index([deletedAt])
+}
+
+model UploadedFile {
+  id            String   @id @default(uuid()) @db.Uuid
+  filename      String
+  originalName  String
+  storageDriver String
+  storagePath   String
+  publicUrl     String
+  mimeType      String
+  sizeBytes     Int
+  purpose       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  @@index([mimeType])
+  @@index([purpose])
+  @@index([createdAt])
+  @@index([deletedAt])
+}

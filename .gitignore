@@ -28,9 +28,3 @@ Thumbs.db
 *.tmp
 *.swp
 
-# Prisma and generated runtime artifacts
-apps/api/generated/
-
-# Upload/runtime storage
-uploads/
-uploads-test/

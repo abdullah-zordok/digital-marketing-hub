@@ -1,0 +1,14 @@
+{
+  "name": "digital-marketing-hub",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "pnpm --filter @digital-marketing-hub/api build",
+    "test": "pnpm --filter @digital-marketing-hub/api test",
+    "test:unit": "pnpm --filter @digital-marketing-hub/api test:unit",
+    "test:contract": "pnpm --filter @digital-marketing-hub/api test:contract",
+    "test:integration": "pnpm --filter @digital-marketing-hub/api test:integration",
+    "dev": "pnpm --filter @digital-marketing-hub/api dev"
+  },
+  "packageManager": "pnpm@9.15.9"
+}
