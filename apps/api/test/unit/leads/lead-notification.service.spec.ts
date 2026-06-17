@@ -34,7 +34,12 @@ describe('LeadNotificationService', () => {
       createNotification: async () => ({ id: 'notification-1' }),
       updateNotification: async (_id: string, status: LeadNotificationStatus) => updates.push(status),
     };
-    const service = new LeadNotificationService(new ConfigService({}), repository as never);
+    const service = new LeadNotificationService(
+      new ConfigService({}),
+      repository as never,
+      backgroundJobMock() as never,
+      operationalLoggerMock() as never,
+    );
 
     await service.notifyNewLead(lead);
 
@@ -54,6 +59,8 @@ describe('LeadNotificationService', () => {
     const service = new LeadNotificationService(
       new ConfigService({ LEAD_NOTIFICATION_WEBHOOK_URL: 'https://workflow.example/webhook' }),
       repository as never,
+      backgroundJobMock() as never,
+      operationalLoggerMock() as never,
     );
 
     await service.notifyNewLead(lead);
@@ -61,3 +68,11 @@ describe('LeadNotificationService', () => {
     expect(updates).toEqual([expectedStatus]);
   });
 });
+
+function backgroundJobMock(): { enqueue: jest.Mock } {
+  return { enqueue: jest.fn(async () => undefined) };
+}
+
+function operationalLoggerMock(): { logEvent: jest.Mock } {
+  return { logEvent: jest.fn() };
+}

@@ -1,6 +1,9 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { ContentStatus } from '@prisma/client';
 
+import { ConfigService } from '@nestjs/config';
+
+import { CacheKeyService } from '../../../src/common/services/cache-key.service';
 import { BlogCategoriesService } from '../../../src/modules/blog/blog-categories.service';
 import { BlogRepository } from '../../../src/modules/blog/blog.repository';
 import {
@@ -15,7 +18,12 @@ describe('blog category workflow', () => {
 
   beforeEach(() => {
     prismaService = new InMemoryPrismaService();
-    blogCategoriesService = new BlogCategoriesService(new BlogRepository(prismaService as never));
+    blogCategoriesService = new BlogCategoriesService(
+      new BlogRepository(prismaService as never),
+      new CacheKeyService(),
+      cacheServiceMock(),
+      new ConfigService({ PUBLIC_CONTENT_CACHE_TTL_SECONDS: 300 }),
+    );
   });
 
   it('creates categories and rejects duplicate slugs', async () => {
@@ -40,3 +48,11 @@ describe('blog category workflow', () => {
     );
   });
 });
+
+function cacheServiceMock(): any {
+  return {
+    getJson: jest.fn(async () => null),
+    setJson: jest.fn(async () => undefined),
+    deleteByPrefix: jest.fn(async () => undefined),
+  };
+}

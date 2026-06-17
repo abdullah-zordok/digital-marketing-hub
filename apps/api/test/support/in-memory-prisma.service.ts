@@ -81,6 +81,8 @@ export class InMemoryPrismaService {
       this.createChatSession(query.data),
     findFirst: async (query: { where: Record<string, unknown> }): Promise<ChatSession | null> =>
       this.findFirstRecord(this.chatSessionsById, query.where),
+    count: async (query: { where: Record<string, unknown> }): Promise<number> =>
+      this.findManyRecords(this.chatSessionsById, query).length,
     update: async (query: { where: { id: string }; data: Partial<ChatSession> }): Promise<ChatSession> =>
       this.updateRecord(this.chatSessionsById, query.where.id, query.data),
   };
@@ -90,6 +92,8 @@ export class InMemoryPrismaService {
       this.createChatMessage(query.data),
     findMany: async (query: Record<string, unknown>): Promise<ChatMessage[]> =>
       this.findManyRecords(this.chatMessagesById, query) as ChatMessage[],
+    count: async (query?: { where: Record<string, unknown> }): Promise<number> =>
+      this.findManyRecords(this.chatMessagesById, query ?? {}).length,
   };
 
   readonly knowledgeBaseItem = {
@@ -158,6 +162,10 @@ export class InMemoryPrismaService {
 
   addChatSession(chatSession: ChatSession): void {
     this.chatSessionsById.set(chatSession.id, chatSession);
+  }
+
+  addChatMessage(chatMessage: ChatMessage): void {
+    this.chatMessagesById.set(chatMessage.id, chatMessage);
   }
 
   addLead(lead: Lead): void {
@@ -279,7 +287,7 @@ export class InMemoryPrismaService {
 
   private findManyRecords<TRecord extends object>(
     recordsById: Map<string, TRecord>,
-    query: Record<string, unknown>,
+    query: Record<string, unknown> = {},
   ): TRecord[] {
     const where = (query.where as Record<string, unknown>) ?? {};
     const records = [...recordsById.values()].filter((record) => this.recordMatchesWhere(record, where));

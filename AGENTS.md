@@ -1,4 +1,4 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read specs/003-ai-chatbot-leads/plan.md
+shell commands, and other important information, read specs/004-docker-production-readiness/plan.md
 <!-- SPECKIT END -->

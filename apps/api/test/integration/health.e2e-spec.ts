@@ -20,10 +20,13 @@ describe('health readiness', () => {
       success: true,
       message: 'Health status retrieved',
       data: {
-        api: 'ok',
-        database: 'ok',
-        redis: 'ok',
+        status: 'ready',
         environment: 'test',
+        checks: {
+          api: 'ready',
+          database: 'ready',
+          cache: 'ready',
+        },
       },
     });
     expect(response.body.data.timestamp).toEqual(expect.any(String));

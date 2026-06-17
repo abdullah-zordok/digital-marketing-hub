@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ContentStatus } from '@prisma/client';
 
+import { CacheKeyService } from '../../common/services/cache-key.service';
 import { SeoMetadataService } from '../../common/services/seo-metadata.service';
 import { ensureNotArchived, ensurePublishableContent } from '../../common/utils/content-status.util';
 import { ensureValidSlug, normalizedSlug } from '../../common/utils/slug.util';
@@ -9,25 +11,34 @@ import { ServiceQueryDto, ServiceReorderDto } from './dto/service-query.dto';
 import { ServiceWriteDto } from './dto/service-write.dto';
 import { ServiceResponse, serviceResponseFor } from './services.mapper';
 import { ServiceRecord, ServicesRepository } from './services.repository';
+import { CacheService } from '../../database/cache.service';
 
 @Injectable()
 export class ServicesService {
   constructor(
     private readonly servicesRepository: ServicesRepository,
     private readonly seoMetadataService: SeoMetadataService,
+    private readonly cacheKeyService: CacheKeyService,
+    private readonly cacheService: CacheService,
+    private readonly configService: ConfigService,
   ) {}
 
   async publicServices(query: PublicServiceQueryDto): Promise<{ items: ServiceResponse[]; meta: unknown }> {
-    const servicesPage = await this.servicesRepository.publicServices(query.page, query.limit);
-    return {
-      items: servicesPage.items.map((service) => this.publicResponseFor(service)),
-      meta: servicesPage.meta,
-    };
+    return this.cachedPublicResponse(this.cacheKeyService.publicServices({ ...query }), async () => {
+      const servicesPage = await this.servicesRepository.publicServices(query.page, query.limit);
+      return {
+        items: servicesPage.items.map((service) => this.publicResponseFor(service)),
+        meta: servicesPage.meta,
+      };
+    });
   }
 
   async publicService(slug: string): Promise<ServiceResponse> {
-    const service = await this.servicesRepository.publicServiceBySlug(normalizedSlug(slug));
-    return this.publicResponseFor(this.requiredService(service));
+    const serviceSlug = normalizedSlug(slug);
+    return this.cachedPublicResponse(this.cacheKeyService.publicService(serviceSlug), async () => {
+      const service = await this.servicesRepository.publicServiceBySlug(serviceSlug);
+      return this.publicResponseFor(this.requiredService(service));
+    });
   }
 
   async adminServices(query: ServiceQueryDto): Promise<{ items: ServiceResponse[]; meta: unknown }> {
@@ -44,37 +55,66 @@ export class ServicesService {
 
   async createService(serviceWriteDto: ServiceWriteDto): Promise<ServiceResponse> {
     const slug = await this.availableSlugFor(serviceWriteDto.slug);
-    return this.adminResponseFor(await this.servicesRepository.createService(slug, serviceWriteDto));
+    const service = await this.servicesRepository.createService(slug, serviceWriteDto);
+    await this.invalidatePublicCache();
+    return this.adminResponseFor(service);
   }
 
   async updateService(id: string, serviceWriteDto: ServiceWriteDto): Promise<ServiceResponse> {
     const currentService = this.requiredService(await this.servicesRepository.serviceById(id));
     ensureNotArchived(currentService.status);
     const slug = await this.availableSlugFor(serviceWriteDto.slug, id);
-    return this.adminResponseFor(await this.servicesRepository.updateService(id, slug, serviceWriteDto));
+    const service = await this.servicesRepository.updateService(id, slug, serviceWriteDto);
+    await this.invalidatePublicCache();
+    return this.adminResponseFor(service);
   }
 
   async publishService(id: string): Promise<ServiceResponse> {
-    const service = this.requiredService(await this.servicesRepository.serviceById(id));
-    ensurePublishableContent(Boolean(service.title && (service.fullDescription || service.shortDescription)));
-    return this.adminResponseFor(await this.servicesRepository.changeStatus(id, ContentStatus.PUBLISHED));
+    const currentService = this.requiredService(await this.servicesRepository.serviceById(id));
+    ensurePublishableContent(Boolean(currentService.title && (currentService.fullDescription || currentService.shortDescription)));
+    const service = await this.servicesRepository.changeStatus(id, ContentStatus.PUBLISHED);
+    await this.invalidatePublicCache();
+    return this.adminResponseFor(service);
   }
 
   async unpublishService(id: string): Promise<ServiceResponse> {
     this.requiredService(await this.servicesRepository.serviceById(id));
-    return this.adminResponseFor(await this.servicesRepository.changeStatus(id, ContentStatus.DRAFT));
+    const service = await this.servicesRepository.changeStatus(id, ContentStatus.DRAFT);
+    await this.invalidatePublicCache();
+    return this.adminResponseFor(service);
   }
 
   async deleteService(id: string): Promise<{ deleted: true }> {
     this.requiredService(await this.servicesRepository.serviceById(id));
     await this.servicesRepository.softDelete(id);
+    await this.invalidatePublicCache();
     return { deleted: true };
   }
 
   async reorderServices(serviceReorderDto: ServiceReorderDto): Promise<{ reordered: true }> {
     await this.ensureReorderableSet(serviceReorderDto);
     await this.servicesRepository.reorderServices(serviceReorderDto.items);
+    await this.invalidatePublicCache();
     return { reordered: true };
+  }
+
+  private async cachedPublicResponse<TPublicResponse>(cacheKey: string, responseFactory: () => Promise<TPublicResponse>): Promise<TPublicResponse> {
+    const cachedResponse = await this.cacheService.getJson<TPublicResponse>(cacheKey);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    const publicResponse = await responseFactory();
+    await this.cacheService.setJson(cacheKey, publicResponse, this.publicContentTtlSeconds());
+    return publicResponse;
+  }
+
+  private async invalidatePublicCache(): Promise<void> {
+    await this.cacheService.deleteByPrefix('public:services:');
+  }
+
+  private publicContentTtlSeconds(): number {
+    return Number(this.configService.get('PUBLIC_CONTENT_CACHE_TTL_SECONDS') ?? 300);
   }
 
   private async availableSlugFor(slug: string, excludedId?: string): Promise<string> {

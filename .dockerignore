@@ -2,6 +2,12 @@ node_modules/
 dist/
 build/
 coverage/
+apps/api/test/
+apps/api/uploads/
+apps/api/uploads-test/
+uploads/
+uploads-test/
+*.tsbuildinfo
 .git/
 .env
 .env.*

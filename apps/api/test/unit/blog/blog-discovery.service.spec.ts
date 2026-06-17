@@ -1,5 +1,7 @@
+import { ConfigService } from '@nestjs/config';
 import { ContentStatus } from '@prisma/client';
 
+import { CacheKeyService } from '../../../src/common/services/cache-key.service';
 import { SeoMetadataService } from '../../../src/common/services/seo-metadata.service';
 import { BlogPostsService } from '../../../src/modules/blog/blog-posts.service';
 import { BlogRepository } from '../../../src/modules/blog/blog.repository';
@@ -16,6 +18,9 @@ describe('blog discovery workflow', () => {
     const blogPostsService = new BlogPostsService(
       new BlogRepository(prismaService as never),
       new SeoMetadataService(),
+      new CacheKeyService(),
+      cacheServiceMock(),
+      new ConfigService({ PUBLIC_CONTENT_CACHE_TTL_SECONDS: 300 }),
     );
 
     prismaService.addBlogCategory(blogCategoryRecord({ id: '20000000-0000-4000-8000-000000000001', slug: 'seo' }));
@@ -35,3 +40,11 @@ describe('blog discovery workflow', () => {
     expect(postsPage.items[0]).toMatchObject({ slug: 'seo-guide' });
   });
 });
+
+function cacheServiceMock(): any {
+  return {
+    getJson: jest.fn(async () => null),
+    setJson: jest.fn(async () => undefined),
+    deleteByPrefix: jest.fn(async () => undefined),
+  };
+}

@@ -24,7 +24,7 @@ describe('LeadsService', () => {
     };
     const repository = { createLead: async () => lead };
     const notifications = { notifyNewLead: async () => undefined };
-    const service = new LeadsService(repository as never, notifications as never);
+    const service = new LeadsService(repository as never, notifications as never, operationalLoggerMock() as never);
 
     await expect(service.createPublicLead({ email: 'lead@example.com', serviceInterest: 'SEO Strategy' }, LeadSource.CHATBOT)).resolves.toMatchObject({
       source: LeadSource.CHATBOT,
@@ -33,8 +33,12 @@ describe('LeadsService', () => {
   });
 
   it('rejects public leads without a contact channel', async () => {
-    const service = new LeadsService({} as never, {} as never);
+    const service = new LeadsService({} as never, {} as never, operationalLoggerMock() as never);
 
     await expect(service.createPublicLead({ serviceInterest: 'SEO Strategy' })).rejects.toBeInstanceOf(BadRequestException);
   });
 });
+
+function operationalLoggerMock(): { logEvent: jest.Mock } {
+  return { logEvent: jest.fn() };
+}

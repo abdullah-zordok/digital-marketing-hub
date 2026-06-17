@@ -18,13 +18,17 @@ export class HealthService {
       this.dependencyStatus(() => this.prismaService.databaseIsReady()),
       this.dependencyStatus(() => this.redisHealthService.redisIsReady()),
     ]);
+    const dependencyChecks = {
+      api: 'ready' as const,
+      database: databaseReady ? 'ready' as const : 'not_ready' as const,
+      cache: redisReady ? 'ready' as const : 'not_ready' as const,
+    };
 
     return {
-      api: 'ok',
-      database: databaseReady ? 'ok' : 'unavailable',
-      redis: redisReady ? 'ok' : 'unavailable',
+      status: databaseReady && redisReady ? 'ready' : 'not_ready',
       environment: this.configService.getOrThrow<string>('NODE_ENV'),
       timestamp: new Date().toISOString(),
+      checks: dependencyChecks,
     };
   }
 
