@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ChatMessageRole, ChatSessionStatus, LeadSource } from '@prisma/client';
 
 import { LeadsService } from '../leads/leads.service';
+import { OperationalLoggerService } from '../../common/services/operational-logger.service';
 import { AiResponseService } from './ai-response.service';
 import { ChatbotRateLimitService } from './chatbot-rate-limit.service';
 import { publicMessageMetadata } from './chatbot-safety.util';
@@ -20,6 +21,7 @@ export class ChatbotService {
     private readonly leadIntentService: LeadIntentService,
     private readonly chatbotRateLimitService: ChatbotRateLimitService,
     private readonly leadsService: LeadsService,
+    private readonly operationalLogger: OperationalLoggerService,
   ) {}
 
   async createSession(sessionDto: CreateChatSessionDto, ipAddress?: string, userAgent?: string): Promise<ChatSessionRecord> {
@@ -42,11 +44,23 @@ export class ChatbotService {
   }
 
   private async assistantMessageFor(sessionId: string, content: string): Promise<ChatMessageRecord> {
-    const knowledgeItems = await this.knowledgeSearchService.relevantKnowledgeFor(content);
-    const response = this.aiResponseService.answerFor(content, knowledgeItems);
-    const intent = this.leadIntentService.intentFor(content);
-    const metadata = { ...response.metadata, intent: intent.hasBuyingIntent, missingFields: intent.missingFields };
-    return this.chatbotRepository.createMessage(sessionId, ChatMessageRole.ASSISTANT, response.content, metadata);
+    try {
+      const knowledgeItems = await this.knowledgeSearchService.relevantKnowledgeFor(content);
+      const response = this.aiResponseService.answerFor(content, knowledgeItems);
+      const intent = this.leadIntentService.intentFor(content);
+      const metadata = { ...response.metadata, intent: intent.hasBuyingIntent, missingFields: intent.missingFields };
+      return this.chatbotRepository.createMessage(sessionId, ChatMessageRole.ASSISTANT, response.content, metadata);
+    } catch (assistantError) {
+      this.operationalLogger.logEvent({
+        eventType: 'chatbot.failure',
+        severity: 'error',
+        safeContext: {
+          sessionId,
+          message: assistantError instanceof Error ? assistantError.message : 'Chatbot response failed',
+        },
+      });
+      throw assistantError;
+    }
   }
 
   private async leadFromMessage(sessionId: string, content: string) {

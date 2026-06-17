@@ -34,6 +34,19 @@ Required foundation values include:
 - `UPLOAD_PUBLIC_PATH`
 - `UPLOAD_STORAGE_PATH`
 - `LEAD_NOTIFICATION_WEBHOOK_URL` (optional; blank disables delivery and records skipped attempts)
+- `TRUSTED_ORIGINS`
+- `REQUEST_BODY_LIMIT`
+- `DOCS_ENABLED`
+- `DOCS_PATH`
+- `CACHE_DEFAULT_TTL_SECONDS`
+- `PUBLIC_CONTENT_CACHE_TTL_SECONDS`
+- `LOGIN_LIMIT`
+- `LOGIN_WINDOW_SECONDS`
+- `LEAD_LIMIT`
+- `LEAD_WINDOW_SECONDS`
+- `UPLOAD_LIMIT`
+- `UPLOAD_WINDOW_SECONDS`
+- `QUEUE_REDIS_URL`
 - `CHATBOT_VISITOR_LIMIT`
 - `CHATBOT_VISITOR_WINDOW_SECONDS`
 - `CHATBOT_SOURCE_LIMIT`
@@ -57,7 +70,13 @@ pnpm --filter @digital-marketing-hub/api dev
 docker compose up --build
 ```
 
-The Compose environment starts the API, PostgreSQL, and Redis together.
+The Compose environment starts the API, PostgreSQL, and Redis together. The API waits for healthy dependencies, applies migrations with `prisma:deploy`, and serves uploads from a persistent Docker volume.
+
+Run the smoke validator after the environment is up:
+
+```powershell
+pnpm smoke:docker
+```
 
 ## Validation
 
@@ -69,10 +88,22 @@ pnpm --filter @digital-marketing-hub/api test:integration
 pnpm --filter @digital-marketing-hub/api build
 ```
 
+Production-readiness validation from the repository root:
+
+```powershell
+pnpm build
+pnpm test:unit
+pnpm test:contract
+pnpm test:integration
+pnpm smoke:docker
+```
+
 Primary endpoint:
 
 ```text
 GET /api/v1/health
+GET /api/docs
+GET /api/docs-json
 ```
 
 Auth endpoints:
@@ -83,6 +114,7 @@ POST /api/v1/auth/logout
 GET  /api/v1/auth/me
 POST /api/v1/auth/refresh
 GET  /api/v1/admin/probe
+GET  /api/v1/admin/analytics/overview
 ```
 
 Content endpoints:

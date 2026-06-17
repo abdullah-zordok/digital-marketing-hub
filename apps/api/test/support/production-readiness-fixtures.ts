@@ -1,0 +1,36 @@
+import { AppEnvironment } from '../../src/config/env.schema';
+
+export function productionReadyEnvironment(overrides: Partial<Record<keyof AppEnvironment, string>> = {}): Record<string, string> {
+  return {
+    NODE_ENV: 'production',
+    PORT: '3000',
+    DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/dmh',
+    REDIS_URL: 'redis://localhost:6379',
+    JWT_SECRET: 'production-secret-with-at-least-thirty-two-characters',
+    JWT_EXPIRES_IN: '15m',
+    JWT_REFRESH_EXPIRES_IN: '7d',
+    OPENAI_API_KEY: 'fake-production-openai-key-with-safe-length',
+    APP_BASE_URL: 'https://api.example.com',
+    FRONTEND_URL: 'https://www.example.com',
+    ADMIN_EMAIL: 'admin@example.com',
+    ADMIN_PASSWORD: 'safe-production-admin-password-with-length',
+    STORAGE_DRIVER: 'local',
+    UPLOAD_MAX_BYTES: '5242880',
+    UPLOAD_PUBLIC_PATH: '/uploads',
+    UPLOAD_STORAGE_PATH: 'uploads',
+    TRUSTED_ORIGINS: 'https://www.example.com,https://admin.example.com',
+    REQUEST_BODY_LIMIT: '1mb',
+    DOCS_ENABLED: 'false',
+    DOCS_PATH: 'api/docs',
+    CACHE_DEFAULT_TTL_SECONDS: '300',
+    PUBLIC_CONTENT_CACHE_TTL_SECONDS: '300',
+    LOGIN_LIMIT: '10',
+    LOGIN_WINDOW_SECONDS: '600',
+    LEAD_LIMIT: '20',
+    LEAD_WINDOW_SECONDS: '600',
+    UPLOAD_LIMIT: '10',
+    UPLOAD_WINDOW_SECONDS: '600',
+    QUEUE_REDIS_URL: 'redis://localhost:6379',
+    ...overrides,
+  };
+}

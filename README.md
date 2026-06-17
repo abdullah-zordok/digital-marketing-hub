@@ -33,6 +33,22 @@ pnpm --filter @digital-marketing-hub/api build
 pnpm --filter @digital-marketing-hub/api test
 ```
 
+## Production Readiness
+
+Spec 4 hardens the single Docker-based backend runtime for production-like validation:
+
+```powershell
+Copy-Item .env.example .env
+pnpm build
+pnpm test:unit
+pnpm test:contract
+pnpm test:integration
+docker compose up --build
+pnpm smoke:docker
+```
+
+The Docker environment starts `api`, `postgres`, and `redis` with health checks and persistent volumes. Runtime readiness is exposed at `GET /api/v1/health`, API documentation is available at `/api/docs` when `DOCS_ENABLED=true`, and release evidence is tracked in `docs/release-readiness-checklist.md`.
+
 ## Quality Standards
 
 - TypeScript strict mode

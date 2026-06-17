@@ -1,4 +1,4 @@
-import { offsetFor, pageMetaFor, paginatedRecords } from '../../../src/common/utils/pagination.util';
+import { normalizedPagination, offsetFor, pageMetaFor, paginatedRecords } from '../../../src/common/utils/pagination.util';
 
 describe('pagination utilities', () => {
   it('calculates offset and metadata for bounded pages', () => {
@@ -21,5 +21,11 @@ describe('pagination utilities', () => {
         totalPages: 3,
       },
     });
+  });
+
+  it('clamps invalid and oversized pagination values', () => {
+    expect(normalizedPagination(0, 500)).toEqual({ page: 1, limit: 100 });
+    expect(offsetFor(-1, 500)).toBe(0);
+    expect(pageMetaFor(1, 500, 250)).toMatchObject({ limit: 100, totalPages: 3 });
   });
 });

@@ -14,7 +14,7 @@ describe('ChatbotService', () => {
       sessionForVisitor: async () => session,
       messagesForSession: async () => messages,
     };
-    const service = new ChatbotService(repository as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const service = new ChatbotService(repository as never, {} as never, {} as never, {} as never, {} as never, {} as never, { logEvent: jest.fn() } as never);
 
     await expect(service.messages(session.id, 'visitor-1')).resolves.toEqual({
       items: [messages[0], { ...messages[1], metadata: { intent: undefined, missingFields: undefined, source: 'fallback' } }],

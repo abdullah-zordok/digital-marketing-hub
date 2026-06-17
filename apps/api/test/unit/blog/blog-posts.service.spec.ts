@@ -1,6 +1,9 @@
 import { ConflictException } from '@nestjs/common';
 import { ContentStatus } from '@prisma/client';
 
+import { ConfigService } from '@nestjs/config';
+
+import { CacheKeyService } from '../../../src/common/services/cache-key.service';
 import { SeoMetadataService } from '../../../src/common/services/seo-metadata.service';
 import { BlogPostsService } from '../../../src/modules/blog/blog-posts.service';
 import { BlogRepository } from '../../../src/modules/blog/blog.repository';
@@ -14,6 +17,9 @@ describe('blog post workflow', () => {
     blogPostsService = new BlogPostsService(
       new BlogRepository(prismaService as never),
       new SeoMetadataService(),
+      new CacheKeyService(),
+      cacheServiceMock(),
+      new ConfigService({ PUBLIC_CONTENT_CACHE_TTL_SECONDS: 300 }),
     );
   });
 
@@ -45,3 +51,11 @@ describe('blog post workflow', () => {
     expect((await blogPostsService.unpublishPost(post.id)).status).toBe(ContentStatus.DRAFT);
   });
 });
+
+function cacheServiceMock(): any {
+  return {
+    getJson: jest.fn(async () => null),
+    setJson: jest.fn(async () => undefined),
+    deleteByPrefix: jest.fn(async () => undefined),
+  };
+}

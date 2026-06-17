@@ -5,17 +5,24 @@ import { ensureLeadHasFollowUpDetails } from './lead-validation.util';
 import { AdminLeadQueryDto, AdminLeadUpdateDto, LeadStatusDto, PublicLeadCreateDto } from './dto/leads.dto';
 import { LeadNotificationService } from './lead-notification.service';
 import { LeadRecord, LeadsRepository } from './leads.repository';
+import { OperationalLoggerService } from '../../common/services/operational-logger.service';
 
 @Injectable()
 export class LeadsService {
   constructor(
     private readonly leadsRepository: LeadsRepository,
     private readonly leadNotificationService: LeadNotificationService,
+    private readonly operationalLogger: OperationalLoggerService,
   ) {}
 
   async createPublicLead(leadDto: PublicLeadCreateDto, source: LeadSource = LeadSource.CONTACT_FORM): Promise<LeadRecord> {
     ensureLeadHasFollowUpDetails(leadDto);
     const lead = await this.leadsRepository.createLead(leadDto, source);
+    this.operationalLogger.logEvent({
+      eventType: 'lead.created',
+      severity: 'info',
+      safeContext: { leadId: lead.id, source: lead.source },
+    });
     await this.leadNotificationService.notifyNewLead(lead);
     return lead;
   }

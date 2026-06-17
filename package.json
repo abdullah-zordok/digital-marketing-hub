@@ -4,10 +4,13 @@
   "version": "0.1.0",
   "scripts": {
     "build": "pnpm --filter @digital-marketing-hub/api build",
+    "build:api": "pnpm --filter @digital-marketing-hub/api build",
     "test": "pnpm --filter @digital-marketing-hub/api test",
     "test:unit": "pnpm --filter @digital-marketing-hub/api test:unit",
     "test:contract": "pnpm --filter @digital-marketing-hub/api test:contract",
     "test:integration": "pnpm --filter @digital-marketing-hub/api test:integration",
+    "docs:api": "pnpm --filter @digital-marketing-hub/api docs:validate",
+    "smoke:docker": "powershell -ExecutionPolicy Bypass -File scripts/validate-docker-smoke.ps1",
     "dev": "pnpm --filter @digital-marketing-hub/api dev"
   },
   "packageManager": "pnpm@9.15.9"

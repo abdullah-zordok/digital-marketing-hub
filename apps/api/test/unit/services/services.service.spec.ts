@@ -1,6 +1,9 @@
 import { ConflictException } from '@nestjs/common';
 import { ContentStatus } from '@prisma/client';
 
+import { ConfigService } from '@nestjs/config';
+
+import { CacheKeyService } from '../../../src/common/services/cache-key.service';
 import { SeoMetadataService } from '../../../src/common/services/seo-metadata.service';
 import { ServicesRepository } from '../../../src/modules/services/services.repository';
 import { ServicesService } from '../../../src/modules/services/services.service';
@@ -15,6 +18,9 @@ describe('services domain workflow', () => {
     servicesService = new ServicesService(
       new ServicesRepository(prismaService as never),
       new SeoMetadataService(),
+      new CacheKeyService(),
+      cacheServiceMock(),
+      new ConfigService({ PUBLIC_CONTENT_CACHE_TTL_SECONDS: 300 }),
     );
   });
 
@@ -60,3 +66,11 @@ describe('services domain workflow', () => {
     expect((await servicesService.adminService(service.id)).sortOrder).toBe(2);
   });
 });
+
+function cacheServiceMock(): any {
+  return {
+    getJson: jest.fn(async () => null),
+    setJson: jest.fn(async () => undefined),
+    deleteByPrefix: jest.fn(async () => undefined),
+  };
+}

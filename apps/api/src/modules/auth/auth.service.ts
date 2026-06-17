@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { User } from '@prisma/client';
 
 import { UsersRepository } from '../users/users.repository';
+import { OperationalLoggerService } from '../../common/services/operational-logger.service';
 import { AuthResponseDto, RefreshTokenPayload, SafeUserDto } from './dto/auth.dto';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
@@ -12,6 +13,7 @@ export class AuthService {
     private readonly usersRepository: UsersRepository,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
+    private readonly operationalLogger: OperationalLoggerService,
   ) {}
 
   async login(email: string, password: string): Promise<AuthResponseDto> {
@@ -54,6 +56,11 @@ export class AuthService {
       : false;
 
     if (!user || !passwordValid) {
+      this.operationalLogger.logEvent({
+        eventType: 'auth.failure',
+        severity: 'warning',
+        safeContext: { email },
+      });
       throw new UnauthorizedException('Invalid email or password');
     }
 

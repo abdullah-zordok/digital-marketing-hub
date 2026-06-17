@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { SeoMetadataService } from '../../common/services/seo-metadata.service';
+import { CacheKeyService } from '../../common/services/cache-key.service';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { AdminBlogCategoriesController } from './admin-blog-categories.controller';
@@ -19,7 +20,7 @@ import { BlogRepository } from './blog.repository';
     BlogCategoriesController,
     BlogPostsController,
   ],
-  providers: [BlogRepository, BlogCategoriesService, BlogPostsService, SeoMetadataService],
+  providers: [BlogRepository, BlogCategoriesService, BlogPostsService, SeoMetadataService, CacheKeyService],
   exports: [BlogCategoriesService, BlogPostsService],
 })
 export class BlogModule {}
